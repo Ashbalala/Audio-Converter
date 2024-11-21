@@ -1,0 +1,217 @@
+<script>
+    const audio = document.getElementById('audio');
+    const playButton = document.getElementById('play');
+    const backwardButton = document.getElementById('backward');
+    const forwardButton = document.getElementById('forward');
+    const speedSelector = document.getElementById('speed');
+    const progressBar = document.getElementById('progress-bar');
+    const progress = document.getElementById('progress');
+    const currentTimeDisplay = document.getElementById('current-time');
+    const durationTimeDisplay = document.getElementById('duration-time');
+    const playlist = document.getElementById('playlist');
+    const trackTitle = document.getElementById('track-title');
+    const cover = document.getElementById('cover');
+
+    // Default "Intro" track
+    const defaultTrack = {
+        title: 'Intro',
+        cover: 'https://od.lk/s/NTJfNDczNTA5NDFf/sample.jpg',
+        audio: 'https://od.lk/s/NTJfNDczNTA5NDBf/cover.mp3',
+    };
+
+    // Fallback storage for environments where localStorage isn't available
+    let fallbackStorage = {};
+
+    // Safe wrapper for localStorage get/set
+    const safeGetItem = (key) => {
+        try {
+            return localStorage.getItem(key);
+        } catch {
+            return fallbackStorage[key] || null;
+        }
+    };
+
+    const safeSetItem = (key, value) => {
+        try {
+            localStorage.setItem(key, value);
+        } catch {
+            fallbackStorage[key] = value;
+        }
+    };
+
+    const trackPositions = JSON.parse(safeGetItem('audioPlayerTracks')) || {};
+
+    // Debounce function to limit the frequency of saveProgress calls
+    const debounce = (func, delay) => {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => func(...args), delay);
+        };
+    };
+
+    // Save current progress to localStorage (debounced)
+    const saveProgress = debounce(() => {
+        const activeTrack = document.querySelector('.track.active');
+        const currentAudio = activeTrack ? activeTrack.dataset.audio : defaultTrack.audio;
+
+        trackPositions[currentAudio] = audio.currentTime;
+
+        safeSetItem('audioPlayerTracks', JSON.stringify(trackPositions));
+        safeSetItem(
+            'audioPlayerTrack',
+            JSON.stringify({
+                currentTrack: currentAudio,
+                currentTime: audio.currentTime,
+                playbackRate: audio.playbackRate,
+            })
+        );
+    }, 300);
+
+    // Load saved progress and apply it
+    const loadProgress = () => {
+        const savedTrack = JSON.parse(safeGetItem('audioPlayerTrack'));
+
+        if (savedTrack) {
+            const { currentTrack, currentTime, playbackRate } = savedTrack;
+
+            // If the saved track is the default track, load it without highlighting
+            if (currentTrack === defaultTrack.audio) {
+                audio.src = defaultTrack.audio;
+                audio.currentTime = currentTime || 0;
+                audio.playbackRate = playbackRate || 1;
+                speedSelector.value = playbackRate || 1;
+
+                trackTitle.textContent = defaultTrack.title;
+                cover.style.backgroundImage = `url('${defaultTrack.cover}')`;
+            } else {
+                // Highlight and load the saved track from the playlist
+                const track = Array.from(document.querySelectorAll('.track')).find(
+                    (t) => t.dataset.audio === currentTrack
+                );
+                if (track) {
+                    switchTrack(track, false);
+                }
+            }
+        } else {
+            // Load the default track initially
+            audio.src = defaultTrack.audio;
+            trackTitle.textContent = defaultTrack.title;
+            cover.style.backgroundImage = `url('${defaultTrack.cover}')`;
+        }
+
+        playButton.innerHTML = "<i class='bx bx-play'></i>";
+    };
+
+    // Format time into hh:mm:ss
+    const formatTime = (seconds) => {
+        if (isNaN(seconds) || seconds <= 0) return '0:00';
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+        const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+
+        if (hrs > 0) {
+            return `${hrs}:${mins}:${secs}`;
+        } else {
+            return `${mins}:${secs}`;
+        }
+    };
+
+    // Highlight the active track in the playlist
+    const updateActiveTrack = (element) => {
+        document.querySelectorAll('.track').forEach((track) => {
+            track.classList.remove('active');
+            track.style.backgroundColor = ''; // Reset background
+            track.style.color = ''; // Reset color
+        });
+
+        if (element) {
+            element.classList.add('active');
+            element.style.backgroundColor = '#5aa897'; // Active track color
+            element.style.color = '#ffffff'; // Active track text color
+        }
+    };
+
+    // Switch to a new track and play it
+    const switchTrack = (element, playImmediately = true) => {
+        const { title: newTitle, cover: newCover, audio: newAudio } = element.dataset;
+
+        trackTitle.textContent = newTitle;
+        cover.style.backgroundImage = `url('${newCover}')`;
+        audio.src = newAudio;
+
+        audio.currentTime = trackPositions[newAudio] || 0;
+
+        updateActiveTrack(element);
+
+        if (playImmediately) {
+            audio.play();
+            playButton.innerHTML = "<i class='bx bx-pause'></i>";
+        }
+        saveProgress();
+    };
+
+    // Play/pause audio
+    playButton.addEventListener('click', () => {
+        if (audio.paused) {
+            audio.play();
+            playButton.innerHTML = "<i class='bx bx-pause'></i>";
+        } else {
+            audio.pause();
+            playButton.innerHTML = "<i class='bx bx-play'></i>";
+        }
+        saveProgress();
+    });
+
+    // Skip backward by 15 seconds
+    backwardButton.addEventListener('click', () => {
+        audio.currentTime = Math.max(0, audio.currentTime - 15);
+        saveProgress();
+    });
+
+    // Skip forward by 15 seconds
+    forwardButton.addEventListener('click', () => {
+        audio.currentTime = Math.min(audio.duration, audio.currentTime + 15);
+        saveProgress();
+    });
+
+    // Change playback speed
+    speedSelector.addEventListener('change', (event) => {
+        audio.playbackRate = parseFloat(event.target.value);
+        saveProgress();
+    });
+
+    // Update duration when metadata is loaded
+    audio.addEventListener('loadedmetadata', () => {
+        durationTimeDisplay.textContent = formatTime(audio.duration);
+    });
+
+    // Update progress bar and current time
+    audio.addEventListener('timeupdate', () => {
+        const progressPercent = (audio.currentTime / audio.duration) * 100;
+        progress.style.width = `${progressPercent}%`;
+        currentTimeDisplay.textContent = formatTime(audio.currentTime);
+        saveProgress();
+    });
+
+    // Seek to a new position when the progress bar is clicked
+    progressBar.addEventListener('click', (e) => {
+        const barWidth = progressBar.offsetWidth;
+        const clickX = e.offsetX;
+        audio.currentTime = (clickX / barWidth) * audio.duration;
+        saveProgress();
+    });
+
+    // Handle track clicks in the playlist
+    playlist.addEventListener('click', (e) => {
+        const trackElement = e.target.closest('.track');
+        if (trackElement) {
+            switchTrack(trackElement);
+        }
+    });
+
+    // Load progress when the page is loaded
+    window.addEventListener('load', loadProgress);
+
+    console.log('JavaScript Loaded!');
+</script>
