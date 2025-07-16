@@ -24,17 +24,10 @@ function App() {
   const [chapter, setChapter] = useState("");
   const [audioLink, setAudioLink] = useState("");
   const [imageLink, setImageLink] = useState("");
-  const [javaScriptContent, setJavaScriptContent] = useState("");
 
-  // Default track details
-  const defaultTrack = {
-    chapter: "Intro",
-    audio: "https://od.lk/s/NTJfNDczNTA5NDBf/cover.mp3",
-    image: "https://od.lk/s/NTJfNDczNTA5NDFf/sample.jpg",
-  };
-
-  React.useEffect(() => {
-    const jsContent = `<script>
+  // Generate JavaScript content
+  const getJavaScriptContent = () => {
+    return `<script>
     const audio = document.getElementById('audio');
     const playButton = document.getElementById('play');
     const backwardButton = document.getElementById('backward');
@@ -251,9 +244,14 @@ function App() {
 
     console.log('JavaScript Loaded!');
 </script>`;
-    
-    setJavaScriptContent(jsContent);
-  }, []);
+  };
+
+  // Default track details
+  const defaultTrack = {
+    chapter: "Intro",
+    audio: "https://od.lk/s/NTJfNDczNTA5NDBf/cover.mp3",
+    image: "https://od.lk/s/NTJfNDczNTA5NDFf/sample.jpg",
+  };
 
   const addTrack = () => {
     if (audioLink) {
@@ -328,27 +326,34 @@ function App() {
       </div>
       <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
   </div>`;
-  };  
+  };
 
   const generateCodeWithJavaScript = () => {
     const htmlCode = generateCode();
-    const fullCode = `${htmlCode}\n${javaScriptContent}`;
-    
-    // Debug logging
-    console.log('HTML code length:', htmlCode.length);
-    console.log('JavaScript content length:', javaScriptContent.length);
-    console.log('Full code length:', fullCode.length);
-    console.log('JavaScript content starts with:', javaScriptContent.substring(0, 50));
-    
+    const javaScriptContent = getJavaScriptContent();
+
+    // Ensure JavaScript content is available
+    if (!javaScriptContent || javaScriptContent.trim() === '') {
+      console.error('JavaScript content is empty!');
+      return htmlCode + '\n<!-- JavaScript content not loaded -->';
+    }
+
+    const fullCode = `${htmlCode}
+
+${javaScriptContent}`;
     return fullCode;
   };
-  
+
   const copyToClipboard = () => {
+    const javaScriptContent = getJavaScriptContent();
+
+    if (!javaScriptContent || javaScriptContent.length === 0) {
+      alert('JavaScript content is not loaded yet. Please wait and try again.');
+      return;
+    }
+
     const finalOutput = generateCodeWithJavaScript();
-    console.log('JavaScript content length:', javaScriptContent.length);
-    console.log('Final output length:', finalOutput.length);
-    console.log('JavaScript content preview:', javaScriptContent.substring(0, 100));
-    
+
     navigator.clipboard.writeText(finalOutput).then(() => {
       alert('Code copied to clipboard!');
     }).catch((err) => {
@@ -356,11 +361,11 @@ function App() {
       alert('Failed to copy to clipboard');
     });
   };
-  
+
   const openConverter = () => {
     window.open(`${window.location.origin}/converter`, "_blank");
   };
-  
+
   return (
     <Container
       maxWidth="md"
@@ -480,7 +485,7 @@ function App() {
         Open Converter
       </Button>
     </Container>
-  );  
+  );
 }
 
 export default App;
