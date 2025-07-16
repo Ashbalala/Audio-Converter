@@ -34,7 +34,7 @@ function App() {
   };
 
   React.useEffect(() => {
-    fetch("/src/java.html")
+    fetch("/java.html")
       .then((response) => response.text())
       .then((data) => {
         setJavaScriptContent(data);
