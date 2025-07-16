@@ -119,7 +119,7 @@ function App() {
                 speedSelector.value = playbackRate || 1;
 
                 trackTitle.textContent = defaultTrack.title;
-                cover.style.backgroundImage = \`url('\${defaultTrack.cover}')\`;
+                cover.style.backgroundImage = 'url("' + defaultTrack.cover + '")';
             } else {
                 // Highlight and load the saved track from the playlist
                 const track = Array.from(document.querySelectorAll('.track')).find(
@@ -133,7 +133,7 @@ function App() {
             // Load the default track initially
             audio.src = defaultTrack.audio;
             trackTitle.textContent = defaultTrack.title;
-            cover.style.backgroundImage = \`url('\${defaultTrack.cover}')\`;
+            cover.style.backgroundImage = 'url("' + defaultTrack.cover + '")';
         }
 
         playButton.innerHTML = "<i class='bx bx-play'></i>";
@@ -147,9 +147,9 @@ function App() {
         const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
 
         if (hrs > 0) {
-            return \`\${hrs}:\${mins}:\${secs}\`;
+            return hrs + ':' + mins + ':' + secs;
         } else {
-            return \`\${mins}:\${secs}\`;
+            return mins + ':' + secs;
         }
     };
 
@@ -173,7 +173,7 @@ function App() {
         const { title: newTitle, cover: newCover, audio: newAudio } = element.dataset;
 
         trackTitle.textContent = newTitle;
-        cover.style.backgroundImage = \`url('\${newCover}')\`;
+        cover.style.backgroundImage = 'url("' + newCover + '")';
         audio.src = newAudio;
 
         audio.currentTime = trackPositions[newAudio] || 0;
@@ -225,7 +225,7 @@ function App() {
     // Update progress bar and current time
     audio.addEventListener('timeupdate', () => {
         const progressPercent = (audio.currentTime / audio.duration) * 100;
-        progress.style.width = \`\${progressPercent}%\`;
+        progress.style.width = progressPercent + '%';
         currentTimeDisplay.textContent = formatTime(audio.currentTime);
         saveProgress();
     });
@@ -331,13 +331,29 @@ function App() {
   };  
 
   const generateCodeWithJavaScript = () => {
-    return `${generateCode()}\n${javaScriptContent}`;
+    const htmlCode = generateCode();
+    const fullCode = `${htmlCode}\n${javaScriptContent}`;
+    
+    // Debug logging
+    console.log('HTML code length:', htmlCode.length);
+    console.log('JavaScript content length:', javaScriptContent.length);
+    console.log('Full code length:', fullCode.length);
+    console.log('JavaScript content starts with:', javaScriptContent.substring(0, 50));
+    
+    return fullCode;
   };
   
   const copyToClipboard = () => {
     const finalOutput = generateCodeWithJavaScript();
-    navigator.clipboard.writeText(finalOutput).catch((err) => {
+    console.log('JavaScript content length:', javaScriptContent.length);
+    console.log('Final output length:', finalOutput.length);
+    console.log('JavaScript content preview:', javaScriptContent.substring(0, 100));
+    
+    navigator.clipboard.writeText(finalOutput).then(() => {
+      alert('Code copied to clipboard!');
+    }).catch((err) => {
       console.error("Error copying text to clipboard: ", err);
+      alert('Failed to copy to clipboard');
     });
   };
   
